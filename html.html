@@ -1,0 +1,201 @@
+"<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BENGALI CONNECT</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+  <style>
+   #suggestions {
+  position: absolute;
+  top: 55px;
+  right: 15px;
+  width: 220px;
+  background: white;
+  border-radius: 6px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+  z-index: 1500;
+}
+
+.suggestion-item {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestion-item:hover {
+  background: #f1f5f9;
+}
+  </style>
+</head>
+<body>
+  <!-- HEADER -->
+  <div style="position:absolute;top:0;left:0;width:100%;background:#1e293b;color:white;z-index:1200;padding:10px 15px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 6px rgba(0,0,0,0.3)">
+    <img src="C:\Users\mrsar\Desktop\map website\logo.png" 
+         style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid white;" />
+    <div style="flex:1">
+      <div style="font-size:18px;font-weight:bold;">Bengali Connect</div>
+      <div style="font-size:12px;opacity:0.8">Restaurants • Temples • Visiting Places</div>
+    </div>
+    <input type="text" id="searchBox" placeholder="Search place name..." 
+      style="padding:6px 10px;border-radius:6px;border:none;width:220px;" />
+  </div>
+
+  <div id="map" style="margin-top:70px;height:calc(100% - 70px);"></div>
+
+  <div class="controls" style="top:80px;">
+    <label class="category"><input type="checkbox" id="cat-rest" checked> Bengali restaurants</label>
+    <label class="category"><input type="checkbox" id="cat-temp" checked> Temples</label>
+    <label class="category"><input type="checkbox" id="cat-visit" checked> Visiting places</label>
+    <br/>
+    <button id="locateBtn">Show my location</button>
+    <button id="routeBtn">Get directions to selected</button>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+  <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+
+  <script>
+const map = L.map('map').setView([18.5204,73.8567], 12);
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+}).addTo(map);
+
+const clusters = L.markerClusterGroup();
+map.addLayer(clusters);
+
+const POIS = [
+  {id:1, type:'restaurant', name:'Top In Town (Deccan)', lat:18.5156, lng:73.8486, desc:'Popular Bengali dishes'},
+  {id:2, type:'restaurant', name:'Aha! Baangali (Wakad)', lat:18.5973, lng:73.7706, desc:'Home-style Bengali food'},
+  {id:10, type:'temple', name:'Pune Kali Bari (Khadki)', lat:18.5369, lng:73.8448, desc:'Kali Bari temple'},
+  {id:20, type:'visit', name:'Shaniwar Wada', lat:18.5196, lng:73.8553, desc:'Historic fort palace'}
+];
+
+const icons = {
+  restaurant: L.icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-red.png', iconSize:[25,41], iconAnchor:[12,41]}),
+  temple: L.icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-violet.png', iconSize:[25,41], iconAnchor:[12,41]}),
+  visit: L.icon({iconUrl:'https://cdn.jsdelivr.net/gh/pointhi/leaflet-color-markers@master/img/marker-icon-green.png', iconSize:[25,41], iconAnchor:[12,41]})
+};
+
+let markersMap = {};
+
+function addPOIs(filterText='') {
+  clusters.clearLayers();
+  markersMap = {};
+
+  POIS.forEach(p => {
+    const matchesSearch = p.name.toLowerCase().includes(filterText.toLowerCase());
+    const showCategory = (p.type==='restaurant' && document.getElementById('cat-rest').checked) ||
+                         (p.type==='temple' && document.getElementById('cat-temp').checked) ||
+                         (p.type==='visit' && document.getElementById('cat-visit').checked);
+
+    if(!showCategory || !matchesSearch) return;
+
+    const marker = L.marker([p.lat,p.lng], {icon:icons[p.type]})
+      .bindPopup(`<b>${p.name}</b><br/>${p.desc}<br/>
+      <button onclick="startRoute(${p.lat},${p.lng})">Directions here</button>`);
+
+    clusters.addLayer(marker);
+    markersMap[p.name] = marker;
+  });
+}
+
+addPOIs();
+
+/* ---------- SEARCH SUGGESTIONS ---------- */
+
+const searchBox = document.getElementById('searchBox');
+const suggestionBox = document.createElement('div');
+suggestionBox.id = "suggestions";
+document.body.appendChild(suggestionBox);
+
+searchBox.addEventListener('input', function(){
+  const value = this.value.toLowerCase();
+  suggestionBox.innerHTML = '';
+
+  if(value === ''){
+    suggestionBox.style.display = 'none';
+    addPOIs('');
+    return;
+  }
+
+  const filtered = POIS.filter(p => 
+    p.name.toLowerCase().includes(value)
+  );
+
+  if(filtered.length === 0){
+    suggestionBox.style.display = 'none';
+    return;
+  }
+
+  filtered.forEach(place => {
+    const div = document.createElement('div');
+    div.className = 'suggestion-item';
+    div.innerText = place.name;
+
+    div.onclick = function(){
+      searchBox.value = place.name;
+      suggestionBox.style.display = 'none';
+
+      addPOIs(place.name);
+      map.setView([place.lat, place.lng], 15);
+
+      setTimeout(() => {
+        markersMap[place.name].openPopup();
+      }, 300);
+    };
+
+    suggestionBox.appendChild(div);
+  });
+
+  suggestionBox.style.display = 'block';
+});
+
+/* ---------- ROUTING ---------- */
+
+let control = null;
+
+function ensureRouter() {
+  if(control) return control;
+
+  control = L.Routing.control({
+    router: L.Routing.osrmv1({
+      serviceUrl: 'https://router.project-osrm.org/route/v1'
+    }),
+    fitSelectedRoutes: true,
+    showAlternatives: false,
+    routeWhileDragging: false,
+    addWaypoints: false
+  }).addTo(map);
+
+  return control;
+}
+
+function startRoute(destLat, destLng){
+  if(!navigator.geolocation){
+    alert('Geolocation not supported');
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const ctl = ensureRouter();
+    ctl.setWaypoints([
+      L.latLng(pos.coords.latitude,pos.coords.longitude),
+      L.latLng(destLat,destLng)
+    ]);
+  }, ()=> alert('Allow location access'));
+}
+
+window.startRoute = startRoute;
+</script>
+</body>
+</html>
