@@ -17,3 +17,43 @@ header {
     height: calc(100vh - 60px);
     width: 100%;
 }
+#contributeBtn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #e11d48;
+  color: white;
+  padding: 12px 18px;
+  border-radius: 30px;
+  cursor: pointer;
+  font-weight: bold;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  z-index: 2000;
+}
+
+#contributeBtn:hover {
+  background: #be123c;
+}
+
+#contributionBox {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  display: none;
+  z-index: 2000;
+  width: 250px;
+}
+
+#contributionBox a {
+  color: #1e293b;
+  font-weight: bold;
+  text-decoration: none;
+}
+
+#contributionBox a:hover {
+  text-decoration: underline;
+}

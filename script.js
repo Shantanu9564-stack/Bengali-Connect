@@ -21,3 +21,8 @@ places.forEach(function(place) {
 
 // Add popup
 marker.bindPopup("<b>Pune City</b><br>This is a marker.").openPopup();
+
+function toggleContribution() {
+  const box = document.getElementById('contributionBox');
+  box.style.display = box.style.display === 'block' ? 'none' : 'block';
+}
